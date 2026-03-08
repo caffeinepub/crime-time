@@ -23,6 +23,11 @@ import { useGameStore } from "./store";
 // Shared player position ref accessible to HUD
 export const sharedPlayerPos = { current: new THREE.Vector3(0, 0, 0) };
 
+// Shared proximity state: which building the player is near
+export const sharedProximity = {
+  current: null as null | "bank" | "gunshop",
+};
+
 export function Game() {
   const phase = useGameStore((s) => s.phase);
 
@@ -32,7 +37,7 @@ export function Game() {
         width: "100vw",
         height: "100vh",
         position: "relative",
-        background: "#080808",
+        background: "#87CEEB",
       }}
     >
       {/* 3D Canvas */}
@@ -48,7 +53,7 @@ export function Game() {
           camera={{ position: [0, 6, 10], fov: 60 }}
           shadows
           gl={{ antialias: true, alpha: false }}
-          style={{ background: "#080808" }}
+          style={{ background: "#87CEEB" }}
         >
           <GameScene />
         </Canvas>
@@ -228,41 +233,72 @@ function GameScene() {
       if (pos) {
         sharedPlayerPos.current.copy(pos);
         setPlayerPos(pos.clone());
+
+        // Update proximity for E-to-enter HUD prompt
+        const bankPos = new THREE.Vector3(20, 0, 0);
+        const shopPos = new THREE.Vector3(-20, 0, 15);
+        if (!inBank && !inGunShop && pos.distanceTo(bankPos) < 9) {
+          sharedProximity.current = "bank";
+        } else if (!inGunShop && !inBank && pos.distanceTo(shopPos) < 8) {
+          sharedProximity.current = "gunshop";
+        } else {
+          sharedProximity.current = null;
+        }
       }
     }, 100);
     return () => clearInterval(interval);
-  }, []);
+  }, [inBank, inGunShop]);
 
-  const npcPositions = npcsRef.current?.getNPCPositions() ?? [];
-
-  const fogColor = new THREE.Color(cityConfig.fogColor);
+  const fogColor = new THREE.Color("#c9e8f8");
 
   return (
     <>
-      {/* Lighting */}
-      <ambientLight intensity={0.4} />
+      {/* Bright sunny daytime lighting */}
+      <ambientLight intensity={1.2} color="#fff8e8" />
       <directionalLight
-        position={[20, 30, 10]}
-        intensity={1.5}
+        position={[60, 100, 40]}
+        intensity={5.0}
+        color="#fffde0"
         castShadow
-        shadow-mapSize={[1024, 1024]}
+        shadow-mapSize={[2048, 2048]}
+        shadow-camera-far={250}
+        shadow-camera-left={-100}
+        shadow-camera-right={100}
+        shadow-camera-top={100}
+        shadow-camera-bottom={-100}
       />
-      <pointLight
-        position={[0, 20, 0]}
-        intensity={0.5}
-        color={cityConfig.color}
+      {/* Fill light from opposite side — soft blue skylight */}
+      <directionalLight
+        position={[-40, 60, -30]}
+        intensity={1.2}
+        color="#b8d8f8"
       />
+      {/* Ground bounce light */}
+      <hemisphereLight args={["#87ceeb", "#6aaa50", 0.8]} />
 
-      {/* Atmosphere */}
-      <fog attach="fog" args={[fogColor, 35, 100]} />
+      {/* Clear sunny sky — push fog very far for crisp visibility */}
+      <fog attach="fog" args={[fogColor, 120, 350]} />
       <Sky
         distance={450000}
-        sunPosition={[100, 5, 100]}
-        inclination={0}
-        azimuth={0.25}
-        turbidity={20}
-        rayleigh={0.2}
+        sunPosition={[150, 60, 80]}
+        inclination={0.48}
+        azimuth={0.22}
+        turbidity={1}
+        rayleigh={0.3}
+        mieCoefficient={0.001}
+        mieDirectionalG={0.95}
       />
+
+      {/* Bright visible sun sphere with glow halo */}
+      <mesh position={[150, 120, 80]}>
+        <sphereGeometry args={[8, 16, 16]} />
+        <meshBasicMaterial color="#ffffcc" />
+      </mesh>
+      {/* Sun glow halo */}
+      <mesh position={[150, 120, 80]}>
+        <sphereGeometry args={[14, 16, 16]} />
+        <meshBasicMaterial color="#ffff88" transparent opacity={0.12} />
+      </mesh>
 
       {/* City world */}
       <CityScene
@@ -294,7 +330,7 @@ function GameScene() {
         projectiles={projectiles}
         onProjectilesUpdate={handleProjectilesUpdate}
         onExplosion={(exp) => setExplosions((e) => [...e, exp])}
-        npcPositions={npcPositions}
+        getNpcPositions={() => npcsRef.current?.getNPCPositions() ?? []}
         onNpcHit={handleNpcHit}
       />
 

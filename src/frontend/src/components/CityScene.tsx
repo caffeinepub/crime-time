@@ -1,3 +1,4 @@
+import { Html } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import type * as THREE from "three";
@@ -110,22 +111,28 @@ function generateBuildings(cityConfig: CityConfig): BuildingData[] {
 
 function generateCars(): CarData[] {
   const cars: CarData[] = [];
+  // Cars placed ON roads (roads at z=-20,0,20 and x=-20,0,20)
   const positions: [number, number][] = [
-    [5, -8],
-    [-8, 5],
-    [15, 12],
-    [-12, -8],
-    [8, 20],
-    [22, -12],
-    [-22, -5],
-    [12, -20],
-    [-5, 18],
-    [28, 8],
+    // On horizontal road z=0
+    [5, -2],
+    [-8, 2],
+    [15, -2],
+    [-12, 2],
+    [28, -2],
+    [-28, 2],
+    // On horizontal road z=-20
+    [8, -22],
+    [22, -18],
+    [-5, -22],
+    [-22, -18],
+    // On horizontal road z=20
+    [-5, 22],
+    [25, 18],
     [-18, 22],
-    [18, -18],
-    [-8, -22],
-    [25, 22],
-    [-25, -18],
+    [12, 18],
+    // On vertical road x=0
+    [2, 10],
+    [-2, -10],
   ];
 
   positions.forEach(([x, z], i) => {
@@ -156,54 +163,167 @@ export function CityScene({
 
   return (
     <group>
-      {/* Ground */}
+      {/* Ground — bright sunny green grass */}
       <mesh
         ref={groundRef}
         rotation={[-Math.PI / 2, 0, 0]}
         position={[0, -0.05, 0]}
       >
-        <planeGeometry args={[120, 120]} />
-        <meshLambertMaterial color={cityConfig.groundColor} />
+        <planeGeometry args={[200, 200]} />
+        <meshLambertMaterial color="#5a9e48" />
       </mesh>
 
-      {/* Road grid - horizontal */}
+      {/* Sidewalks (light concrete strips alongside roads) — horizontal */}
+      {[-20, 0, 20].map((z) =>
+        [-1, 1].map((side) => (
+          <mesh
+            key={`sw-h-${z}-${side}`}
+            rotation={[-Math.PI / 2, 0, 0]}
+            position={[0, 0.004, z + side * 6.5]}
+          >
+            <planeGeometry args={[140, 2.5]} />
+            <meshLambertMaterial color="#d4cfc4" />
+          </mesh>
+        )),
+      )}
+
+      {/* Sidewalks — vertical */}
+      {[-20, 0, 20].map((x) =>
+        [-1, 1].map((side) => (
+          <mesh
+            key={`sw-v-${x}-${side}`}
+            rotation={[-Math.PI / 2, 0, 0]}
+            position={[x + side * 6.5, 0.004, 0]}
+          >
+            <planeGeometry args={[2.5, 140]} />
+            <meshLambertMaterial color="#d4cfc4" />
+          </mesh>
+        )),
+      )}
+
+      {/* Road grid - horizontal (dark asphalt) — wider roads */}
       {[-20, 0, 20].map((z) => (
         <mesh
           key={`hr-${z}`}
           rotation={[-Math.PI / 2, 0, 0]}
-          position={[0, 0, z]}
+          position={[0, 0.01, z]}
         >
-          <planeGeometry args={[120, 8]} />
-          <meshLambertMaterial color="#111111" />
+          <planeGeometry args={[140, 12]} />
+          <meshLambertMaterial color="#2a2a2a" />
         </mesh>
       ))}
 
-      {/* Road grid - vertical */}
+      {/* Road grid - vertical (dark asphalt) — wider roads */}
       {[-20, 0, 20].map((x) => (
         <mesh
           key={`vr-${x}`}
           rotation={[-Math.PI / 2, 0, 0]}
-          position={[x, 0, 0]}
+          position={[x, 0.01, 0]}
         >
-          <planeGeometry args={[8, 120]} />
-          <meshLambertMaterial color="#111111" />
+          <planeGeometry args={[12, 140]} />
+          <meshLambertMaterial color="#2a2a2a" />
         </mesh>
       ))}
 
-      {/* Road markings - dashes */}
-      {Array.from({ length: 20 }, (_, i) => {
-        const xPos = -55 + i * 6;
-        return (
+      {/* Road edge lines — horizontal roads, white solid edges */}
+      {[-20, 0, 20].map((z) =>
+        [-1, 1].map((side) => (
           <mesh
-            key={`dash-h-${xPos}`}
+            key={`edge-h-${z}-${side}`}
             rotation={[-Math.PI / 2, 0, 0]}
-            position={[xPos, 0.01, 0]}
+            position={[0, 0.02, z + side * 5.6]}
           >
-            <planeGeometry args={[3, 0.3]} />
-            <meshBasicMaterial color="#ffcc00" />
+            <planeGeometry args={[140, 0.3]} />
+            <meshBasicMaterial color="#ffffff" />
           </mesh>
-        );
-      })}
+        )),
+      )}
+
+      {/* Road edge lines — vertical roads, white solid edges */}
+      {[-20, 0, 20].map((x) =>
+        [-1, 1].map((side) => (
+          <mesh
+            key={`edge-v-${x}-${side}`}
+            rotation={[-Math.PI / 2, 0, 0]}
+            position={[x + side * 5.6, 0.02, 0]}
+          >
+            <planeGeometry args={[0.3, 140]} />
+            <meshBasicMaterial color="#ffffff" />
+          </mesh>
+        )),
+      )}
+
+      {/* Center lane dashes — horizontal roads (bright yellow dashes) */}
+      {[-20, 0, 20].map((z) =>
+        Array.from({ length: 25 }, (_, i) => {
+          const xPos = -72 + i * 6;
+          return (
+            <mesh
+              key={`dash-h-${z}-${xPos}`}
+              rotation={[-Math.PI / 2, 0, 0]}
+              position={[xPos, 0.025, z]}
+            >
+              <planeGeometry args={[3.8, 0.35]} />
+              <meshBasicMaterial color="#ffee00" />
+            </mesh>
+          );
+        }),
+      )}
+
+      {/* Center lane dashes — vertical roads (bright yellow dashes) */}
+      {[-20, 0, 20].map((x) =>
+        Array.from({ length: 25 }, (_, i) => {
+          const zPos = -72 + i * 6;
+          return (
+            <mesh
+              key={`dash-v-${x}-${zPos}`}
+              rotation={[-Math.PI / 2, 0, 0]}
+              position={[x, 0.025, zPos]}
+            >
+              <planeGeometry args={[0.35, 3.8]} />
+              <meshBasicMaterial color="#ffee00" />
+            </mesh>
+          );
+        }),
+      )}
+
+      {/* Lane divider dashes — horizontal roads (white, inner lanes) */}
+      {[-20, 0, 20].map((z) =>
+        [-1, 1].map((lane) =>
+          Array.from({ length: 25 }, (_, i) => {
+            const xPos = -72 + i * 6;
+            return (
+              <mesh
+                key={`ldash-h-${z}-${lane}-${xPos}`}
+                rotation={[-Math.PI / 2, 0, 0]}
+                position={[xPos, 0.022, z + lane * 2.8]}
+              >
+                <planeGeometry args={[2.5, 0.18]} />
+                <meshBasicMaterial color="#cccccc" transparent opacity={0.7} />
+              </mesh>
+            );
+          }),
+        ),
+      )}
+
+      {/* Lane divider dashes — vertical roads (white, inner lanes) */}
+      {[-20, 0, 20].map((x) =>
+        [-1, 1].map((lane) =>
+          Array.from({ length: 25 }, (_, i) => {
+            const zPos = -72 + i * 6;
+            return (
+              <mesh
+                key={`ldash-v-${x}-${lane}-${zPos}`}
+                rotation={[-Math.PI / 2, 0, 0]}
+                position={[x + lane * 2.8, 0.022, zPos]}
+              >
+                <planeGeometry args={[0.18, 2.5]} />
+                <meshBasicMaterial color="#cccccc" transparent opacity={0.7} />
+              </mesh>
+            );
+          }),
+        ),
+      )}
 
       {/* Buildings */}
       {buildings.map((b) => (
@@ -213,14 +333,14 @@ export function CityScene({
         </mesh>
       ))}
 
-      {/* Building windows (simple emissive planes) */}
+      {/* Building windows (reflective glass in daylight) */}
       {buildings.slice(0, 15).map((b) => (
         <mesh
           key={`bw-${b.x}-${b.z}`}
           position={[b.x, b.h * 0.6, b.z + b.d / 2 + 0.01]}
         >
           <planeGeometry args={[b.w * 0.7, b.h * 0.5]} />
-          <meshBasicMaterial color="#ffff88" transparent opacity={0.08} />
+          <meshBasicMaterial color="#88ccff" transparent opacity={0.15} />
         </mesh>
       ))}
 
@@ -247,6 +367,33 @@ export function CityScene({
           <planeGeometry args={[5, 2]} />
           <meshBasicMaterial color="#ff2244" transparent opacity={0.3} />
         </mesh>
+        {/* Floating label above bank */}
+        <Html
+          position={[0, 12, 0]}
+          center
+          distanceFactor={18}
+          zIndexRange={[10, 0]}
+        >
+          <div
+            style={{
+              background: "rgba(180,0,40,0.92)",
+              color: "#fff",
+              fontFamily: "system-ui, sans-serif",
+              fontWeight: 900,
+              fontSize: 14,
+              letterSpacing: 2,
+              padding: "5px 14px",
+              borderRadius: 4,
+              border: "2px solid #ff4466",
+              boxShadow: "0 2px 12px rgba(255,34,68,0.7)",
+              whiteSpace: "nowrap",
+              textShadow: "0 1px 4px #000",
+              pointerEvents: "none",
+            }}
+          >
+            🏦 BANK
+          </div>
+        </Html>
       </group>
 
       {/* GUN SHOP building */}
@@ -265,6 +412,33 @@ export function CityScene({
           <planeGeometry args={[4, 2]} />
           <meshBasicMaterial color="#ffcc00" transparent opacity={0.3} />
         </mesh>
+        {/* Floating label above gun shop */}
+        <Html
+          position={[0, 10, 0]}
+          center
+          distanceFactor={18}
+          zIndexRange={[10, 0]}
+        >
+          <div
+            style={{
+              background: "rgba(140,100,0,0.92)",
+              color: "#fff",
+              fontFamily: "system-ui, sans-serif",
+              fontWeight: 900,
+              fontSize: 14,
+              letterSpacing: 2,
+              padding: "5px 14px",
+              borderRadius: 4,
+              border: "2px solid #ffcc00",
+              boxShadow: "0 2px 12px rgba(255,204,0,0.7)",
+              whiteSpace: "nowrap",
+              textShadow: "0 1px 4px #000",
+              pointerEvents: "none",
+            }}
+          >
+            🔫 GUN SHOP
+          </div>
+        </Html>
       </group>
 
       {/* Parked cars */}
@@ -312,7 +486,7 @@ export function CityScene({
         );
       })}
 
-      {/* Street lights */}
+      {/* Street lights (daytime — lights off, just the poles) */}
       {[
         [-10, -10],
         [10, -10],
@@ -322,22 +496,27 @@ export function CityScene({
         [0, 20],
         [-20, 0],
         [20, 0],
+        [-20, -20],
+        [20, -20],
+        [-20, 20],
+        [20, 20],
       ].map(([lx, lz]) => (
         <group key={`sl-${lx}-${lz}`} position={[lx, 0, lz]}>
-          <mesh position={[0, 3, 0]}>
-            <cylinderGeometry args={[0.08, 0.1, 6, 4]} />
-            <meshLambertMaterial color="#444444" />
+          {/* Pole */}
+          <mesh position={[0, 3.5, 0]}>
+            <cylinderGeometry args={[0.08, 0.12, 7, 6]} />
+            <meshLambertMaterial color="#777777" />
           </mesh>
-          <mesh position={[0.5, 5.8, 0]}>
-            <boxGeometry args={[1.2, 0.15, 0.3]} />
-            <meshLambertMaterial color="#444444" />
+          {/* Arm */}
+          <mesh position={[0.6, 6.8, 0]}>
+            <boxGeometry args={[1.4, 0.12, 0.2]} />
+            <meshLambertMaterial color="#777777" />
           </mesh>
-          <pointLight
-            position={[0.5, 5.5, 0]}
-            color={cityConfig.color}
-            intensity={2}
-            distance={12}
-          />
+          {/* Light fixture */}
+          <mesh position={[1.2, 6.6, 0]}>
+            <boxGeometry args={[0.5, 0.25, 0.4]} />
+            <meshLambertMaterial color="#aaaaaa" />
+          </mesh>
         </group>
       ))}
 
@@ -350,25 +529,17 @@ export function CityScene({
         <meshBasicMaterial color="#ffffff" transparent opacity={0.2} />
       </mesh>
 
-      {/* Ambient atmospheric fog effect at edges */}
-      {([60, -60] as number[]).map((x) => (
-        <mesh key={`fog-x-${x}`} position={[x, 10, 0]}>
-          <boxGeometry args={[1, 30, 120]} />
-          <meshBasicMaterial
-            color={cityConfig.fogColor}
-            transparent
-            opacity={0.8}
-          />
+      {/* Decorative city boundary walls / distant hills */}
+      {([70, -70] as number[]).map((x) => (
+        <mesh key={`wall-x-${x}`} position={[x, 5, 0]}>
+          <boxGeometry args={[1, 20, 160]} />
+          <meshLambertMaterial color="#5a8040" transparent opacity={0.5} />
         </mesh>
       ))}
-      {([60, -60] as number[]).map((z) => (
-        <mesh key={`fog-z-${z}`} position={[0, 10, z]}>
-          <boxGeometry args={[120, 30, 1]} />
-          <meshBasicMaterial
-            color={cityConfig.fogColor}
-            transparent
-            opacity={0.8}
-          />
+      {([70, -70] as number[]).map((z) => (
+        <mesh key={`wall-z-${z}`} position={[0, 5, z]}>
+          <boxGeometry args={[160, 20, 1]} />
+          <meshLambertMaterial color="#5a8040" transparent opacity={0.5} />
         </mesh>
       ))}
     </group>

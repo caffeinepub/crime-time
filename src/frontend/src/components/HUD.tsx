@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { sharedProximity } from "../Game";
 import { CITY_CONFIGS } from "../cityConfigs";
 import { WEAPON_CONFIGS, useGameStore } from "../store";
 
@@ -11,7 +13,56 @@ export function HUD() {
     currentCity,
     notifications,
     phase,
+    inBank,
+    inGunShop,
+    bankRobbed,
+    setInBank,
+    setInGunShop,
+    addMoney,
+    addNotification,
+    increaseWanted,
+    setBankRobbed,
   } = useGameStore();
+
+  const [nearBuilding, setNearBuilding] = useState<null | "bank" | "gunshop">(
+    null,
+  );
+
+  // Poll proximity ref for display
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNearBuilding(sharedProximity.current);
+    }, 150);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Mobile tap-to-enter handler
+  const handleMobileTap = () => {
+    if (phase !== "playing" || !nearBuilding) return;
+    if (nearBuilding === "bank") {
+      if (!inBank && !inGunShop) {
+        setInBank(true);
+        addNotification("ENTERING BANK — GUARDS ALERT!", "#ff2244");
+        increaseWanted(1);
+      } else if (inBank && !bankRobbed) {
+        import("../cityConfigs").then(({ CITY_CONFIGS }) => {
+          const cityConfig = CITY_CONFIGS[useGameStore.getState().currentCity];
+          setBankRobbed(true);
+          const reward = cityConfig.bankReward;
+          addMoney(reward);
+          increaseWanted(3);
+          addNotification(
+            `BANK ROBBED! +$${reward.toLocaleString()}`,
+            "#ffcc00",
+          );
+        });
+      }
+    } else if (nearBuilding === "gunshop") {
+      if (!inGunShop && !inBank) {
+        setInGunShop(true);
+      }
+    }
+  };
 
   if (phase !== "playing") return null;
 
@@ -286,6 +337,84 @@ export function HUD() {
         ))}
       </div>
 
+      {/* PROXIMITY PROMPT — shown when near bank or gun shop */}
+      {nearBuilding && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: 90,
+            left: "50%",
+            transform: "translateX(-50%)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 8,
+            pointerEvents: "auto",
+          }}
+        >
+          {/* Desktop: Press E hint */}
+          <div
+            style={{
+              background: "rgba(0,0,0,0.88)",
+              border: `2px solid ${nearBuilding === "bank" ? "#ff2244" : "#ffcc00"}`,
+              borderRadius: 6,
+              padding: "10px 22px",
+              color: nearBuilding === "bank" ? "#ff6677" : "#ffdd44",
+              fontSize: 15,
+              fontWeight: 800,
+              letterSpacing: 2,
+              textShadow: `0 0 8px ${nearBuilding === "bank" ? "#ff2244" : "#ffcc00"}`,
+              boxShadow: `0 0 16px ${nearBuilding === "bank" ? "rgba(255,34,68,0.4)" : "rgba(255,204,0,0.4)"}`,
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              userSelect: "none",
+            }}
+            className="hide-on-mobile"
+          >
+            <span
+              style={{
+                background: "rgba(255,255,255,0.15)",
+                border: "1px solid rgba(255,255,255,0.3)",
+                borderRadius: 4,
+                padding: "2px 8px",
+                fontSize: 13,
+                color: "#fff",
+                fontWeight: 700,
+              }}
+            >
+              E
+            </span>
+            Enter {nearBuilding === "bank" ? "Bank" : "Gun Shop"}
+          </div>
+
+          {/* Mobile: Tap button */}
+          <button
+            type="button"
+            onClick={handleMobileTap}
+            className="show-on-mobile"
+            style={{
+              background:
+                nearBuilding === "bank"
+                  ? "rgba(200,20,50,0.92)"
+                  : "rgba(180,140,0,0.92)",
+              border: `2px solid ${nearBuilding === "bank" ? "#ff4466" : "#ffcc00"}`,
+              borderRadius: 50,
+              padding: "14px 32px",
+              color: "#fff",
+              fontSize: 16,
+              fontWeight: 900,
+              letterSpacing: 2,
+              boxShadow: `0 4px 20px ${nearBuilding === "bank" ? "rgba(255,34,68,0.6)" : "rgba(255,204,0,0.6)"}`,
+              cursor: "pointer",
+              display: "none",
+            }}
+          >
+            TAP TO ENTER {nearBuilding === "bank" ? "🏦 BANK" : "🔫 GUN SHOP"}
+          </button>
+        </div>
+      )}
+
       {/* CONTROLS HINT */}
       <div
         style={{
@@ -311,6 +440,14 @@ export function HUD() {
           15% { opacity: 1; transform: translateY(0); }
           70% { opacity: 1; }
           100% { opacity: 0; }
+        }
+        @media (pointer: coarse), (max-width: 1024px) {
+          .hide-on-mobile { display: none !important; }
+          .show-on-mobile { display: flex !important; }
+        }
+        @media (pointer: fine) and (min-width: 1025px) {
+          .hide-on-mobile { display: flex; }
+          .show-on-mobile { display: none !important; }
         }
       `}</style>
     </div>

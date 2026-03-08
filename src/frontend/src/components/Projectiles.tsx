@@ -17,7 +17,7 @@ interface ProjectilesProps {
   projectiles: ProjectileData[];
   onProjectilesUpdate: (updated: ProjectileData[]) => void;
   onExplosion: (exp: ExplosionData) => void;
-  npcPositions: { id: number; position: THREE.Vector3; hp: number }[];
+  getNpcPositions: () => { id: number; position: THREE.Vector3; hp: number }[];
   onNpcHit: (npcId: number, damage: number) => void;
 }
 
@@ -25,7 +25,7 @@ export function Projectiles({
   projectiles,
   onProjectilesUpdate,
   onExplosion,
-  npcPositions,
+  getNpcPositions,
   onNpcHit,
 }: ProjectilesProps) {
   const meshRefs = useRef<Record<number, THREE.Mesh>>({});
@@ -48,7 +48,8 @@ export function Projectiles({
         continue;
       }
 
-      // Check NPC hits
+      // Check NPC hits — fetch live positions every frame so we never miss
+      const npcPositions = getNpcPositions();
       let hitNpc = false;
       for (const npc of npcPositions) {
         if (npc.hp <= 0) continue;
